@@ -2,11 +2,42 @@ package main
 
 import (
 	"binance_collector/binance"
+	"binance_collector/binance/binance_models"
+	"binance_collector/queue"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"log"
+	"time"
 )
 
 func main() {
-	test3()
+	test4()
+	time.Sleep(1 * time.Second)
+	test5()
+}
+
+func test5() {
+	kf := new(queue.KafkaConnection).Init("binance-2")
+	kf.Receiver("localhost")
+
+	if err := kf.Receive("test", func(msg *kafka.Message) {
+		log.Print(msg)
+	}); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func test4() {
+	kf := new(queue.KafkaConnection).Init("binance-1")
+	kf.Delivery("localhost")
+
+	if err := kf.SendJSON(binance_models.WsRequest{
+		Method: "",
+		Params: nil,
+		Id:     0,
+	}, "test"); err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func test1() {
