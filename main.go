@@ -11,6 +11,10 @@ import (
 
 func main() {
 	test4()
+	test4()
+	test4()
+	test4()
+	test4()
 	time.Sleep(1 * time.Second)
 	test5()
 }
@@ -20,7 +24,8 @@ func test5() {
 	kf.Receiver("localhost")
 
 	if err := kf.Receive("test", func(msg *kafka.Message) {
-		log.Print(msg)
+		message := string(msg.Value)
+		log.Print(message)
 	}); err != nil {
 		log.Fatal(err)
 	}

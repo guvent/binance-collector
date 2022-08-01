@@ -62,7 +62,7 @@ func (c *KafkaConnection) Receiver(server string) *KafkaConnection {
 		&kafka.ConfigMap{
 			"bootstrap.servers":  c.Server,
 			"group.id":           c.Group,
-			"auto.offset.reset":  "latest", //"earliest",
+			"auto.offset.reset":  "earliest", //"earliest", "latest",
 			"enable.auto.commit": false,
 		},
 	); err != nil {
