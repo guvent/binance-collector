@@ -20,6 +20,6 @@ type DepthResponse struct {
 }
 
 type DepthValue struct {
-	PriceLevel string
-	Quantity   string
+	PriceLevel float64
+	Quantity   float64
 }

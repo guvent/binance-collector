@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 )
 
 type Stream struct {
@@ -89,13 +90,13 @@ func (bs *Stream) Ticker(symbols []string, callback func(result binance_models.T
 	req := binance_models.WsRequest{
 		Method: "SUBSCRIBE",
 		Params: (func(symbols []string) []string {
-			var strings []string
+			var s []string
 
 			for _, symbol := range symbols {
-				strings = append(strings, string(symbol)+"@ticker")
+				s = append(s, fmt.Sprintf("%s@ticker", strings.ToLower(symbol)))
 			}
 
-			return strings
+			return s
 		})(symbols),
 		Id: 1,
 	}
@@ -137,13 +138,13 @@ func (bs *Stream) AggTrade(symbols []string, callback func(result binance_models
 	req := binance_models.WsRequest{
 		Method: "SUBSCRIBE",
 		Params: (func(symbols []string) []string {
-			var strings []string
+			var s []string
 
 			for _, symbol := range symbols {
-				strings = append(strings, string(symbol)+"@aggTrade")
+				s = append(s, fmt.Sprintf("%s@aggTrade", strings.ToLower(symbol)))
 			}
 
-			return strings
+			return s
 		})(symbols),
 		Id: 1,
 	}
@@ -185,13 +186,13 @@ func (bs *Stream) Depth(symbols []string, retention string, callback func(result
 	req := binance_models.WsRequest{
 		Method: "SUBSCRIBE",
 		Params: (func(symbols []string) []string {
-			var strings []string
+			var s []string
 
 			for _, symbol := range symbols {
-				strings = append(strings, fmt.Sprintf("%s@depth@%s", symbol, retention))
+				s = append(s, fmt.Sprintf("%s@depth@%s", strings.ToLower(symbol), retention))
 			}
 
-			return strings
+			return s
 		})(symbols),
 		Id: 1,
 	}

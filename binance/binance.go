@@ -2,7 +2,9 @@ package binance
 
 import (
 	"binance_collector/binance/binance_models"
+	"binance_collector/queue"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -14,6 +16,8 @@ type Binance struct {
 	Bids []binance_models.DepthValue
 
 	Symbol string
+
+	Queue *queue.KafkaConnection
 }
 
 func (b *Binance) Init(symbol string) *Binance {
@@ -21,6 +25,9 @@ func (b *Binance) Init(symbol string) *Binance {
 
 	b.Stream = new(Stream).Init()
 	b.Market = new(Market).Init()
+
+	//b.Queue = new(queue.KafkaConnection).Init("binance-2")
+	//b.Queue.Delivery("localhost")
 
 	return b
 }
@@ -31,14 +38,38 @@ func (b *Binance) CollectDepth() *Binance {
 	} else {
 		for _, ask := range depth.Asks {
 			b.Asks = append(b.Asks, binance_models.DepthValue{
-				PriceLevel: ask[0],
-				Quantity:   ask[1],
+				PriceLevel: (func(vl string) float64 {
+					if v, e := strconv.ParseFloat(vl, 64); e != nil {
+						return 0.0
+					} else {
+						return v
+					}
+				})(ask[0]),
+				Quantity: (func(vl string) float64 {
+					if v, e := strconv.ParseFloat(vl, 64); e != nil {
+						return 0.0
+					} else {
+						return v
+					}
+				})(ask[1]),
 			})
 		}
 		for _, bid := range depth.Bids {
 			b.Bids = append(b.Bids, binance_models.DepthValue{
-				PriceLevel: bid[0],
-				Quantity:   bid[1],
+				PriceLevel: (func(vl string) float64 {
+					if v, e := strconv.ParseFloat(vl, 64); e != nil {
+						return 0.0
+					} else {
+						return v
+					}
+				})(bid[0]),
+				Quantity: (func(vl string) float64 {
+					if v, e := strconv.ParseFloat(vl, 64); e != nil {
+						return 0.0
+					} else {
+						return v
+					}
+				})(bid[1]),
 			})
 		}
 	}
@@ -64,16 +95,44 @@ func (b *Binance) FetchDepth(max int) *Binance {
 
 			for _, ask := range message.Data.AsksToBeUpdated {
 				b.Asks = append(b.Asks, binance_models.DepthValue{
-					PriceLevel: ask[0],
-					Quantity:   ask[1],
+					PriceLevel: (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(ask[0]),
+					Quantity: (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(ask[1]),
 				})
+				b.Asks = b.Asks[1:]
 			}
 			for _, bid := range message.Data.BidsToBeUpdated {
 				b.Bids = append(b.Bids, binance_models.DepthValue{
-					PriceLevel: bid[0],
-					Quantity:   bid[1],
+					PriceLevel: (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(bid[0]),
+					Quantity: (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(bid[1]),
 				})
+				b.Bids = b.Bids[1:]
 			}
+
+			//b.Queue.SendJSON(b.Asks, "ask")
 
 			log.Printf("Appended: %s", time.Now().UTC())
 		},
