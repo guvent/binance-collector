@@ -22,3 +22,19 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+
+  binance_collector:
+    image: binance_collector
+    command: >
+      sh -c "
+        git init &&
+        git remote add origin ${GIT_URL} &&
+        git fetch &&
+        git pull origin master &&
+        go mod download &&
+        go build -o main -tags musl &&
+        chmod 755 main
+        ./main"
+    environment:
+      GIT_URL: ${GIT_URL}
+
