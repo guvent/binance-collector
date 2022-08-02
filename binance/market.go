@@ -1,6 +1,7 @@
 package binance
 
 import (
+	"binance_collector/binance/binance_models"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,8 +18,8 @@ func (m *Market) Init() *Market {
 	return m
 }
 
-func (m *Market) GetTicker(period string) (interface{}, error) {
-	var responseBody interface{}
+func (m *Market) GetTicker(period string) ([]binance_models.TickerResponse, error) {
+	var responseBody []binance_models.TickerResponse
 
 	client := new(http.Client)
 	url := fmt.Sprintf("%s/ticker/%s", m.Url, period)
@@ -37,8 +38,8 @@ func (m *Market) GetTicker(period string) (interface{}, error) {
 	return responseBody, nil
 }
 
-func (m *Market) GetDepth(symbol string) (interface{}, error) {
-	var responseBody interface{}
+func (m *Market) GetDepth(symbol string) (*binance_models.DepthResponse, error) {
+	var responseBody *binance_models.DepthResponse
 
 	client := new(http.Client)
 	url := fmt.Sprintf("%s/depth?symbol=%s&limit=5000", m.Url, symbol)

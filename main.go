@@ -4,20 +4,16 @@ import (
 	"binance_collector/binance"
 	"binance_collector/binance/binance_models"
 	"binance_collector/queue"
+	"encoding/json"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"log"
-	"time"
 )
 
 func main() {
-	test4()
-	test4()
-	test4()
-	test4()
-	test4()
-	time.Sleep(1 * time.Second)
-	test5()
+	test2()
 }
+
+var collect []interface{}
 
 func test5() {
 	kf := new(queue.KafkaConnection).Init("binance-2")
@@ -49,7 +45,8 @@ func test1() {
 	if market, err := new(binance.Market).Init().GetDepth("BTCUSDT"); err != nil {
 		log.Fatal(err)
 	} else {
-		log.Print(market)
+		data, _ := json.Marshal(market)
+		log.Print(string(data))
 	}
 }
 
@@ -57,11 +54,30 @@ func test2() {
 	if market, err := new(binance.Market).Init().GetTicker("24hr"); err != nil {
 		log.Fatal(err)
 	} else {
-		log.Print(market)
+
+		data, _ := json.Marshal(market[0])
+		log.Print(string(data))
 	}
 }
 
 func test3() {
+	if err := new(binance.Stream).Init().Ticker(
+		[]string{
+			"btcusdt",
+		},
+		func(message binance_models.TickerResult) {
+
+			collect = append(collect, message)
+			log.Print(message)
+		},
+	); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Print(collect)
+}
+
+func test6() {
 	if err := new(binance.Stream).Init().Connect(
 		[]string{
 			"btcusdt@aggTrade",
@@ -69,9 +85,13 @@ func test3() {
 			"btcusdt@depth@1000ms",
 		},
 		func(message interface{}) {
+
+			collect = append(collect, message)
 			log.Print(message)
 		},
 	); err != nil {
 		log.Fatal(err)
 	}
+
+	log.Print(collect)
 }
