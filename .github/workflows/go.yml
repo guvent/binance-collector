@@ -1,28 +1,25 @@
+name: Go
+
 on:
   push:
-    # Sequence of patterns matched against refs/tags
-    tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
-release:
-  types: [created]
-
-name: Build Release
 jobs:
-  releases-matrix:
-    name: Release Go Binary
+
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # build and publish in parallel: linux/386, windows/386, linux/amd64, windows/amd64
-        goos: [linux]
-        goarch: [386, amd64]
     steps:
-      - uses: actions/checkout@v2
-      - uses: RomanosTrechlis/actions-go-release@v0.4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          release_name: ${{ github.ref_name }}
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Test
+      run: go test -v ./...
