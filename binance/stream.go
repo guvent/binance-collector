@@ -2,7 +2,9 @@ package binance
 
 import (
 	"binance_collector/binance/binance_models"
+	"errors"
 	"flag"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -11,8 +13,9 @@ import (
 )
 
 type Stream struct {
-	Url    string
-	Header http.Header
+	Url        string
+	Header     http.Header
+	Connection *websocket.Conn
 }
 
 func (bs *Stream) Init() *Stream {
@@ -22,218 +25,214 @@ func (bs *Stream) Init() *Stream {
 	return bs
 }
 
-func (bs *Stream) Connect(symbols []string, callback func(result interface{})) error {
+func (bs *Stream) Open() error {
 	flag.Parse()
 	log.SetFlags(0)
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	if c, _, err := websocket.DefaultDialer.Dial(bs.Url, bs.Header); err != nil {
-		log.Fatal("dial:", err)
+	if conn, _, err := websocket.DefaultDialer.Dial(bs.Url, bs.Header); err != nil {
+		log.Print("dial:", err)
 	} else {
-		defer func(c *websocket.Conn) {
-			if closeErr := c.Close(); closeErr != nil {
-				log.Fatal(closeErr)
-			}
-		}(c)
+		//defer func(conn *websocket.Connection) {
+		//	if closeErr := conn.Close(); closeErr != nil {
+		//		log.Print(closeErr)
+		//	}
+		//}(conn)
 
-		req := binance_models.WsRequest{
-			Method: "SUBSCRIBE",
-			Params: symbols,
-			Id:     1,
-		}
-
-		if writeErr := c.WriteJSON(req); writeErr != nil {
-			return writeErr
-		}
-
-		var first *binance_models.FirstInfo
-
-		for {
-			var message interface{}
-
-			if first == nil {
-				if readErr := c.ReadJSON(&first); readErr != nil {
-					return readErr
-				}
-			}
-
-			if readErr := c.ReadJSON(&message); readErr != nil {
-				return readErr
-			}
-
-			callback(message)
-		}
+		bs.Connection = conn
 	}
 
 	return nil
 }
 
-func (bs *Stream) Ticker(symbols []string, callback func(result binance_models.TickerResult)) error {
-	flag.Parse()
-	log.SetFlags(0)
+func (bs *Stream) Any(symbols []string, callback func(result interface{})) error {
+	if bs.Connection == nil {
+		return errors.New("connection closed")
+	}
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
+	req := binance_models.WsRequest{
+		Method: "SUBSCRIBE",
+		Params: symbols,
+		Id:     1,
+	}
 
-	if c, _, err := websocket.DefaultDialer.Dial(bs.Url, bs.Header); err != nil {
-		log.Fatal("dial:", err)
-	} else {
-		defer func(c *websocket.Conn) {
-			if closeErr := c.Close(); closeErr != nil {
-				log.Fatal(closeErr)
-			}
-		}(c)
+	if writeErr := bs.Connection.WriteJSON(req); writeErr != nil {
+		return writeErr
+	}
 
-		req := binance_models.WsRequest{
-			Method: "SUBSCRIBE",
-			Params: (func(symbols []string) []string {
-				var strings []string
+	var first *binance_models.FirstInfo
 
-				for _, symbol := range symbols {
-					strings = append(strings, string(symbol)+"@ticker")
-				}
+	for {
+		var message interface{}
 
-				return strings
-			})(symbols),
-			Id: 1,
-		}
-
-		if writeErr := c.WriteJSON(req); writeErr != nil {
-			return writeErr
-		}
-
-		var first *binance_models.FirstInfo
-
-		for {
-			var message binance_models.TickerResult
-
-			if first == nil {
-				if readErr := c.ReadJSON(&first); readErr != nil {
-					return readErr
-				}
-			}
-
-			if readErr := c.ReadJSON(&message); readErr != nil {
+		if first == nil {
+			if readErr := bs.Connection.ReadJSON(&first); readErr != nil {
 				return readErr
 			}
-
-			callback(message)
 		}
+
+		if readErr := bs.Connection.ReadJSON(&message); readErr != nil {
+			return readErr
+		}
+
+		callback(message)
+	}
+}
+
+func (bs *Stream) Ticker(symbols []string, callback func(result binance_models.TickerResult)) error {
+	if bs.Connection == nil {
+		return errors.New("connection closed")
+	}
+
+	req := binance_models.WsRequest{
+		Method: "SUBSCRIBE",
+		Params: (func(symbols []string) []string {
+			var strings []string
+
+			for _, symbol := range symbols {
+				strings = append(strings, string(symbol)+"@ticker")
+			}
+
+			return strings
+		})(symbols),
+		Id: 1,
+	}
+
+	if writeErr := bs.Connection.WriteJSON(req); writeErr != nil {
+		return writeErr
+	}
+
+	var first *binance_models.FirstInfo
+
+	for {
+		if bs.Connection == nil {
+			break
+		}
+
+		var message binance_models.TickerResult
+
+		if first == nil {
+			if readErr := bs.Connection.ReadJSON(&first); readErr != nil {
+				return readErr
+			}
+		}
+
+		if readErr := bs.Connection.ReadJSON(&message); readErr != nil {
+			return readErr
+		}
+
+		callback(message)
 	}
 
 	return nil
 }
 
 func (bs *Stream) AggTrade(symbols []string, callback func(result binance_models.AggTradeResult)) error {
-	flag.Parse()
-	log.SetFlags(0)
+	if bs.Connection == nil {
+		return errors.New("connection closed")
+	}
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
+	req := binance_models.WsRequest{
+		Method: "SUBSCRIBE",
+		Params: (func(symbols []string) []string {
+			var strings []string
 
-	if c, _, err := websocket.DefaultDialer.Dial(bs.Url, bs.Header); err != nil {
-		log.Fatal("dial:", err)
-	} else {
-		defer func(c *websocket.Conn) {
-			if closeErr := c.Close(); closeErr != nil {
-				log.Fatal(closeErr)
-			}
-		}(c)
-
-		req := binance_models.WsRequest{
-			Method: "SUBSCRIBE",
-			Params: (func(symbols []string) []string {
-				var strings []string
-
-				for _, symbol := range symbols {
-					strings = append(strings, string(symbol)+"@aggTrade")
-				}
-
-				return strings
-			})(symbols),
-			Id: 1,
-		}
-
-		if writeErr := c.WriteJSON(req); writeErr != nil {
-			return writeErr
-		}
-
-		var first *binance_models.FirstInfo
-
-		for {
-			var message binance_models.AggTradeResult
-
-			if first == nil {
-				if readErr := c.ReadJSON(&first); readErr != nil {
-					return readErr
-				}
+			for _, symbol := range symbols {
+				strings = append(strings, string(symbol)+"@aggTrade")
 			}
 
-			if readErr := c.ReadJSON(&message); readErr != nil {
+			return strings
+		})(symbols),
+		Id: 1,
+	}
+
+	if writeErr := bs.Connection.WriteJSON(req); writeErr != nil {
+		return writeErr
+	}
+
+	var first *binance_models.FirstInfo
+
+	for {
+		if bs.Connection == nil {
+			break
+		}
+
+		var message binance_models.AggTradeResult
+
+		if first == nil {
+			if readErr := bs.Connection.ReadJSON(&first); readErr != nil {
 				return readErr
 			}
-
-			callback(message)
 		}
+
+		if readErr := bs.Connection.ReadJSON(&message); readErr != nil {
+			return readErr
+		}
+
+		callback(message)
 	}
 
 	return nil
 }
 
-func (bs *Stream) Depth(symbols []string, callback func(result binance_models.DepthResult)) error {
-	flag.Parse()
-	log.SetFlags(0)
+func (bs *Stream) Depth(symbols []string, retention string, callback func(result binance_models.DepthResult)) error {
+	if bs.Connection == nil {
+		return errors.New("connection closed")
+	}
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
+	req := binance_models.WsRequest{
+		Method: "SUBSCRIBE",
+		Params: (func(symbols []string) []string {
+			var strings []string
 
-	if c, _, err := websocket.DefaultDialer.Dial(bs.Url, bs.Header); err != nil {
-		log.Fatal("dial:", err)
-	} else {
-		defer func(c *websocket.Conn) {
-			if closeErr := c.Close(); closeErr != nil {
-				log.Fatal(closeErr)
-			}
-		}(c)
-
-		req := binance_models.WsRequest{
-			Method: "SUBSCRIBE",
-			Params: (func(symbols []string) []string {
-				var strings []string
-
-				for _, symbol := range symbols {
-					strings = append(strings, string(symbol)+"@depth@1000ms")
-				}
-
-				return strings
-			})(symbols),
-			Id: 1,
-		}
-
-		if writeErr := c.WriteJSON(req); writeErr != nil {
-			return writeErr
-		}
-
-		var first *binance_models.FirstInfo
-
-		for {
-			var message binance_models.DepthResult
-
-			if first == nil {
-				if readErr := c.ReadJSON(&first); readErr != nil {
-					return readErr
-				}
+			for _, symbol := range symbols {
+				strings = append(strings, fmt.Sprintf("%s@depth@%s", symbol, retention))
 			}
 
-			if readErr := c.ReadJSON(&message); readErr != nil {
+			return strings
+		})(symbols),
+		Id: 1,
+	}
+
+	if writeErr := bs.Connection.WriteJSON(req); writeErr != nil {
+		return writeErr
+	}
+
+	var first *binance_models.FirstInfo
+
+	for {
+		if bs.Connection == nil {
+			break
+		}
+
+		var message binance_models.DepthResult
+
+		if first == nil {
+			if readErr := bs.Connection.ReadJSON(&first); readErr != nil {
 				return readErr
 			}
-
-			callback(message)
 		}
+
+		if readErr := bs.Connection.ReadJSON(&message); readErr != nil {
+			return readErr
+		}
+
+		callback(message)
 	}
 
 	return nil
+}
+
+func (bs *Stream) Close() *Stream {
+	if bs.Connection != nil {
+		if err := bs.Connection.Close(); err != nil {
+			log.Print(err)
+			return nil
+		}
+		bs.Connection = nil
+	}
+
+	return bs
 }

@@ -18,3 +18,8 @@ type DepthResponse struct {
 	Bids         [][]string `json:"bids"`
 	LastUpdateId int64      `json:"lastUpdateId"`
 }
+
+type DepthValue struct {
+	PriceLevel string
+	Quantity   string
+}

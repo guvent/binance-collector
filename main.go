@@ -2,96 +2,21 @@ package main
 
 import (
 	"binance_collector/binance"
-	"binance_collector/binance/binance_models"
-	"binance_collector/queue"
-	"encoding/json"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"log"
+	"time"
 )
 
 func main() {
-	test2()
-}
+	bin := new(binance.Binance).Init("btcusdt")
 
-var collect []interface{}
+	log.Printf("Started: %s", time.Now().UTC())
+	bin.CollectDepth()
+	log.Printf("Collected: %s", time.Now().UTC())
 
-func test5() {
-	kf := new(queue.KafkaConnection).Init("binance-2")
-	kf.Receiver("localhost")
+	bin.FetchDepth(10)
+	log.Printf("Fetched: %s", time.Now().UTC())
 
-	if err := kf.Receive("test", func(msg *kafka.Message) {
-		message := string(msg.Value)
-		log.Print(message)
-	}); err != nil {
-		log.Fatal(err)
-	}
-}
+	log.Print(bin.Asks)
+	log.Print(bin.Bids)
 
-func test4() {
-	kf := new(queue.KafkaConnection).Init("binance-1")
-	kf.Delivery("localhost")
-
-	if err := kf.SendJSON(binance_models.WsRequest{
-		Method: "",
-		Params: nil,
-		Id:     0,
-	}, "test"); err != nil {
-		log.Fatal(err)
-	}
-
-}
-
-func test1() {
-	if market, err := new(binance.Market).Init().GetDepth("BTCUSDT"); err != nil {
-		log.Fatal(err)
-	} else {
-		data, _ := json.Marshal(market)
-		log.Print(string(data))
-	}
-}
-
-func test2() {
-	if market, err := new(binance.Market).Init().GetTicker("24hr"); err != nil {
-		log.Fatal(err)
-	} else {
-
-		data, _ := json.Marshal(market[0])
-		log.Print(string(data))
-	}
-}
-
-func test3() {
-	if err := new(binance.Stream).Init().Ticker(
-		[]string{
-			"btcusdt",
-		},
-		func(message binance_models.TickerResult) {
-
-			collect = append(collect, message)
-			log.Print(message)
-		},
-	); err != nil {
-		log.Fatal(err)
-	}
-
-	log.Print(collect)
-}
-
-func test6() {
-	if err := new(binance.Stream).Init().Connect(
-		[]string{
-			"btcusdt@aggTrade",
-			"btcusdt@ticker",
-			"btcusdt@depth@1000ms",
-		},
-		func(message interface{}) {
-
-			collect = append(collect, message)
-			log.Print(message)
-		},
-	); err != nil {
-		log.Fatal(err)
-	}
-
-	log.Print(collect)
 }

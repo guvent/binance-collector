@@ -6,25 +6,25 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 type Market struct {
 	Url string
 }
 
-func (m *Market) Init() *Market {
-	m.Url = "https://api1.binance.com/api/v3"
+func (mr *Market) Init() *Market {
+	mr.Url = "https://api1.binance.com/api/v3"
 
-	return m
+	return mr
 }
 
-func (m *Market) GetTicker(period string) ([]binance_models.TickerResponse, error) {
+func (mr *Market) GetTicker(period string) ([]binance_models.TickerResponse, error) {
 	var responseBody []binance_models.TickerResponse
 
-	client := new(http.Client)
-	url := fmt.Sprintf("%s/ticker/%s", m.Url, period)
+	url := fmt.Sprintf("%s/ticker/%s", mr.Url, period)
 
-	if response, responseErr := client.Get(url); responseErr != nil {
+	if response, responseErr := new(http.Client).Get(url); responseErr != nil {
 		return nil, responseErr
 	} else {
 		if body, bodyErr := ioutil.ReadAll(response.Body); bodyErr != nil {
@@ -35,16 +35,16 @@ func (m *Market) GetTicker(period string) ([]binance_models.TickerResponse, erro
 			}
 		}
 	}
+
 	return responseBody, nil
 }
 
-func (m *Market) GetDepth(symbol string) (*binance_models.DepthResponse, error) {
+func (mr *Market) GetDepth(symbol string, limit int) (*binance_models.DepthResponse, error) {
 	var responseBody *binance_models.DepthResponse
 
-	client := new(http.Client)
-	url := fmt.Sprintf("%s/depth?symbol=%s&limit=5000", m.Url, symbol)
+	url := fmt.Sprintf("%s/depth?symbol=%s&limit=%d", mr.Url, strings.ToUpper(symbol), limit)
 
-	if response, responseErr := client.Get(url); responseErr != nil {
+	if response, responseErr := new(http.Client).Get(url); responseErr != nil {
 		return nil, responseErr
 	} else {
 		if body, bodyErr := ioutil.ReadAll(response.Body); bodyErr != nil {
@@ -55,5 +55,6 @@ func (m *Market) GetDepth(symbol string) (*binance_models.DepthResponse, error) 
 			}
 		}
 	}
+
 	return responseBody, nil
 }
