@@ -14,9 +14,8 @@ func main() {
 	log.Printf("Collected: %s", time.Now().UTC())
 
 	bin.FetchDepth(10)
-	log.Printf("Fetched: %s", time.Now().UTC())
+	log.Printf("Fetch Complete: %s", time.Now().UTC())
 
 	log.Print(bin.Asks)
 	log.Print(bin.Bids)
-
 }

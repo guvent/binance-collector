@@ -3,6 +3,7 @@ package binance
 import (
 	"binance_collector/binance/binance_models"
 	"log"
+	"time"
 )
 
 type Binance struct {
@@ -54,6 +55,7 @@ func (b *Binance) FetchDepth(max int) *Binance {
 	if err := b.Stream.Depth(
 		[]string{b.Symbol}, "1000ms",
 		func(message binance_models.DepthResult) {
+			log.Printf("Fetched: %s", time.Now().UTC())
 			loop++
 
 			if loop >= max {
@@ -72,6 +74,8 @@ func (b *Binance) FetchDepth(max int) *Binance {
 					Quantity:   bid[1],
 				})
 			}
+
+			log.Printf("Appended: %s", time.Now().UTC())
 		},
 	); err != nil {
 		log.Print(err)
