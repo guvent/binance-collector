@@ -1,18 +1,20 @@
 package binance_models
 
 type AggTradeResult struct {
-	Data struct {
-		EventTime           int64  `json:"E"`
-		Ignore              bool   `json:"M"`
-		TradeTime           int64  `json:"T"`
-		AggregateTradeID    int    `json:"a"`
-		EventType           string `json:"e"`
-		FirstTradeID        int    `json:"f"`
-		LastTradeID         int    `json:"l"`
-		IsBuyerMarketMarker bool   `json:"m"`
-		Price               string `json:"p"`
-		Quantity            string `json:"q"`
-		Symbol              string `json:"s"`
-	} `json:"data"`
-	Stream string `json:"stream"`
+	Data   AggTradeResultData `json:"data"`
+	Stream string             `json:"stream"`
+}
+
+type AggTradeResultData struct {
+	EventTime           float64 `xml:"E"`
+	Ignore              bool    `json:"M"`
+	TradeTime           float64 `json:"T"`
+	AggregateTradeID    float64 `json:"a"`
+	EventType           string  `json:"e"`
+	FirstTradeID        float64 `json:"f"`
+	LastTradeID         float64 `json:"l"`
+	IsBuyerMarketMarker bool    `json:"m"`
+	Price               string  `json:"p"`
+	Quantity            string  `json:"q"`
+	Symbol              string  `json:"s"`
 }

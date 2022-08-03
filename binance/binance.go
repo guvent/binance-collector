@@ -143,6 +143,12 @@ func (b *Binance) FetchDepth(max int) *Binance {
 	return b
 }
 
+func (b *Binance) CloseWS() *Binance {
+	b.Stream.Close()
+
+	return b
+}
+
 func (b *Binance) GetAsks() []binance_models.DepthValue {
 	return b.Asks
 }
