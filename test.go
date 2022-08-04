@@ -7,9 +7,23 @@ import (
 	"encoding/json"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"log"
+	"time"
 )
 
 var collect []interface{}
+
+func oldMain() {
+	bin := new(binance.Binance).Init("BtcUsdT")
+
+	log.Printf("Started: %s", time.Now().UTC())
+	bin.CollectDepth()
+	log.Printf("Collected: %s", time.Now().UTC())
+
+	bin.FetchDepth(100)
+	log.Printf("Collect Complete: %s", time.Now().UTC())
+
+	bin.CloseWS()
+}
 
 func test5() {
 	kf := new(queue.KafkaConnection).Init("binance-2")

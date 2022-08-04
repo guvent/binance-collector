@@ -22,6 +22,9 @@ type DepthResponse struct {
 }
 
 type DepthValue struct {
-	PriceLevel float64
-	Quantity   float64
+	PriceLevel           float64
+	Quantity             float64
+	FirstUpdateIDInEvent float64
+	FinalUpdateIDInEvent float64
+	IsStream             bool
 }

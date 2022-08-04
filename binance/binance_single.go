@@ -23,68 +23,137 @@ type BinanceSingle struct {
 	DepthBids []binance_models.DepthValue
 
 	Request binance_models.WsRequest
+
+	Symbol         string
+	Limit          int
+	DepthMs        int
+	DepthCollected bool
 }
 
-func (bs *BinanceSingle) Init(symbol, depth string, limit int) *BinanceSingle {
+func (bs *BinanceSingle) Init(symbol string, limit int, depthMs int, aggTrade, ticker bool) *BinanceSingle {
 	bs.Url = "wss://stream.binance.com/stream"
 	bs.Header = nil
+	bs.DepthCollected = false
+
+	bs.Symbol = symbol
+	bs.Limit = limit
+	bs.DepthMs = depthMs
+
+	var params []string
+
+	if depthMs >= 100 {
+		params = append(params, fmt.Sprintf("%s@depth@%dms", strings.ToLower(symbol), depthMs))
+	}
+
+	if aggTrade {
+		params = append(params, fmt.Sprintf("%s@aggTrade", strings.ToLower(symbol)))
+	}
+	if ticker {
+		params = append(params, fmt.Sprintf("%s@ticker", strings.ToLower(symbol)))
+	}
 
 	bs.Request = binance_models.WsRequest{
 		Method: "SUBSCRIBE",
-		Params: []string{
-			fmt.Sprintf("%s@depth@%s", strings.ToLower(symbol), depth),
-			fmt.Sprintf("%s@aggTrade", strings.ToLower(symbol)),
-			fmt.Sprintf("%s@ticker", strings.ToLower(symbol)),
-		},
-		Id: 1,
-	}
-
-	return bs.CollectDepth(symbol, limit)
-}
-
-func (bs *BinanceSingle) CollectDepth(symbol string, limit int) *BinanceSingle {
-	if depth, err := new(Market).Init().GetDepth(symbol, limit); err != nil {
-		log.Print(err)
-	} else {
-		for _, ask := range depth.Asks {
-			bs.DepthAsks = append(bs.DepthAsks, binance_models.DepthValue{
-				PriceLevel: (func(vl string) float64 {
-					if v, e := strconv.ParseFloat(vl, 64); e != nil {
-						return 0.0
-					} else {
-						return v
-					}
-				})(ask[0]),
-				Quantity: (func(vl string) float64 {
-					if v, e := strconv.ParseFloat(vl, 64); e != nil {
-						return 0.0
-					} else {
-						return v
-					}
-				})(ask[1]),
-			})
-		}
-		for _, bid := range depth.Bids {
-			bs.DepthBids = append(bs.DepthBids, binance_models.DepthValue{
-				PriceLevel: (func(vl string) float64 {
-					if v, e := strconv.ParseFloat(vl, 64); e != nil {
-						return 0.0
-					} else {
-						return v
-					}
-				})(bid[0]),
-				Quantity: (func(vl string) float64 {
-					if v, e := strconv.ParseFloat(vl, 64); e != nil {
-						return 0.0
-					} else {
-						return v
-					}
-				})(bid[1]),
-			})
-		}
+		Params: params,
+		Id:     1,
 	}
 
 	return bs
+}
+
+func (bs *BinanceSingle) CollectDepth(symbol string, limit int) error {
+	time.Sleep(time.Duration(bs.DepthMs) * time.Millisecond)
+
+	if depth, err := new(Market).Init().GetDepth(symbol, limit); err != nil {
+		return err
+	} else {
+		// TODO: don't worked this...
+		//
+		//for i, depthAsk := range bs.DepthAsks {
+		//	if depth.LastUpdateId < depthAsk.FinalUpdateIDInEvent {
+		//		bs.DepthAsks = bs.DepthAsks[i:] // +1
+		//		break
+		//	}
+		//}
+		//for i, depthBid := range bs.DepthBids {
+		//	if depth.LastUpdateId < depthBid.FinalUpdateIDInEvent {
+		//		bs.DepthBids = bs.DepthBids[i:] // +1
+		//		break
+		//	}
+		//}
+		//
+
+		// TODO: Put one wrong item! But don't worry, sometimes do it.
+		var newDepthAsks []binance_models.DepthValue
+		var newDepthBids []binance_models.DepthValue
+
+		for _, depthAsk := range bs.DepthAsks {
+			if depth.LastUpdateId+1 <= depthAsk.FirstUpdateIDInEvent {
+				newDepthAsks = append(newDepthAsks, depthAsk)
+			}
+		}
+
+		for _, depthBid := range bs.DepthBids {
+			if depth.LastUpdateId+1 <= depthBid.FirstUpdateIDInEvent {
+				newDepthBids = append(newDepthBids, depthBid)
+			}
+		}
+
+		bs.DepthAsks = newDepthAsks
+		bs.DepthBids = newDepthBids
+		// -- Put one wrong item! But don't worry, sometimes do it.
+
+		for _, ask := range depth.Asks {
+			bs.DepthAsks = append([]binance_models.DepthValue{
+				{
+					PriceLevel: (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(ask[0]),
+					Quantity: (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(ask[1]),
+					FirstUpdateIDInEvent: depth.LastUpdateId,
+					FinalUpdateIDInEvent: depth.LastUpdateId,
+					IsStream:             false,
+				},
+			}, bs.DepthAsks...)
+		}
+		for _, bid := range depth.Bids {
+			bs.DepthBids = append([]binance_models.DepthValue{
+				{
+					PriceLevel: (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(bid[0]),
+					Quantity: (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(bid[1]),
+					FirstUpdateIDInEvent: depth.LastUpdateId,
+					FinalUpdateIDInEvent: depth.LastUpdateId,
+					IsStream:             false,
+				},
+			}, bs.DepthBids...)
+		}
+
+		bs.DepthCollected = true
+	}
+
+	return nil
 }
 
 func (bs *BinanceSingle) Open() error {
@@ -109,7 +178,7 @@ func (bs *BinanceSingle) Open() error {
 	return nil
 }
 
-func (bs *BinanceSingle) Any(size int) error {
+func (bs *BinanceSingle) Any(durationSec int) error {
 	if err := bs.Open(); err != nil {
 		log.Print(err)
 	}
@@ -118,22 +187,25 @@ func (bs *BinanceSingle) Any(size int) error {
 		return writeErr
 	}
 
-	for {
-		size--
-
-		if size <= 0 {
-			return nil
-		}
-
+	go func() {
 		var mixinResult *binance_models.MixinResult
 
-		if readErr := bs.Connection.ReadJSON(&mixinResult); readErr != nil {
-			log.Print(readErr)
-		} else {
-			bs.Switch(mixinResult)
-			//log.Print(mixinResult.Stream, " - ", time.Now().UTC())
+		for {
+			if readErr := bs.Connection.ReadJSON(&mixinResult); readErr != nil {
+				log.Print(readErr)
+			} else {
+				go bs.Switch(mixinResult)
+			}
 		}
+	}()
+
+	if collectErr := bs.CollectDepth(bs.Symbol, bs.Limit); collectErr != nil {
+		return collectErr
+	} else {
+		time.Sleep(time.Duration(durationSec) * time.Second)
 	}
+
+	return nil
 }
 
 func (bs *BinanceSingle) Switch(mixinResult *binance_models.MixinResult) *BinanceSingle {
@@ -208,20 +280,33 @@ func (bs *BinanceSingle) Depth(message map[string]interface{}) *BinanceSingle {
 		quantity, _ := strconv.ParseFloat(ask.([]interface{})[1].(string), 64)
 
 		bs.DepthAsks = append(bs.DepthAsks, binance_models.DepthValue{
-			PriceLevel: priceLevel,
-			Quantity:   quantity,
+			PriceLevel:           priceLevel,
+			Quantity:             quantity,
+			FirstUpdateIDInEvent: message["U"].(float64),
+			FinalUpdateIDInEvent: message["u"].(float64),
+			IsStream:             true,
 		})
-		bs.DepthAsks = bs.DepthAsks[1:]
+
+		if bs.DepthCollected {
+			bs.DepthAsks = bs.DepthAsks[1:]
+		}
 	}
+
 	for _, bid := range message["b"].([]interface{}) {
 		priceLevel, _ := strconv.ParseFloat(bid.([]interface{})[0].(string), 64)
 		quantity, _ := strconv.ParseFloat(bid.([]interface{})[1].(string), 64)
 
 		bs.DepthBids = append(bs.DepthBids, binance_models.DepthValue{
-			PriceLevel: priceLevel,
-			Quantity:   quantity,
+			PriceLevel:           priceLevel,
+			Quantity:             quantity,
+			FirstUpdateIDInEvent: message["U"].(float64),
+			FinalUpdateIDInEvent: message["u"].(float64),
+			IsStream:             true,
 		})
-		bs.DepthBids = bs.DepthBids[1:]
+
+		if bs.DepthCollected {
+			bs.DepthBids = bs.DepthBids[1:]
+		}
 	}
 
 	log.Printf("Appended: %s", time.Now().UTC())
