@@ -1,10 +1,5 @@
 package binance_models
 
-type DepthResult struct {
-	Data   DepthResultData `json:"data"`
-	Stream string          `json:"stream"`
-}
-
 type DepthResultData struct {
 	EventTime            float64    `json:"E"`
 	FirstUpdateIDInEvent float64    `json:"U"`

@@ -7,23 +7,9 @@ import (
 	"encoding/json"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"log"
-	"time"
 )
 
 var collect []interface{}
-
-func oldMain() {
-	bin := new(binance.Binance).Init("BtcUsdT")
-
-	log.Printf("Started: %s", time.Now().UTC())
-	bin.CollectDepth()
-	log.Printf("Collected: %s", time.Now().UTC())
-
-	bin.FetchDepth(100)
-	log.Printf("Collect Complete: %s", time.Now().UTC())
-
-	bin.CloseWS()
-}
 
 func test5() {
 	kf := new(queue.KafkaConnection).Init("binance-2")
@@ -68,40 +54,4 @@ func test2() {
 		data, _ := json.Marshal(market[0])
 		log.Print(string(data))
 	}
-}
-
-func test3() {
-	if err := new(binance.Stream).Init().Ticker(
-		[]string{
-			"btcusdt",
-		},
-		func(message binance_models.TickerResult) {
-
-			collect = append(collect, message)
-			log.Print(message)
-		},
-	); err != nil {
-		log.Fatal(err)
-	}
-
-	log.Print(collect)
-}
-
-func test6() {
-	if err := new(binance.Stream).Init().Any(
-		[]string{
-			"btcusdt@aggTrade",
-			"btcusdt@ticker",
-			"btcusdt@depth@1000ms",
-		},
-		func(message interface{}) {
-
-			collect = append(collect, message)
-			log.Print(message)
-		},
-	); err != nil {
-		log.Fatal(err)
-	}
-
-	log.Print(collect)
 }

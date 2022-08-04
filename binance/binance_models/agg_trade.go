@@ -1,10 +1,5 @@
 package binance_models
 
-type AggTradeResult struct {
-	Data   AggTradeResultData `json:"data"`
-	Stream string             `json:"stream"`
-}
-
 type AggTradeResultData struct {
 	EventTime           float64 `xml:"E"`
 	Ignore              bool    `json:"M"`

@@ -1,10 +1,5 @@
 package binance_models
 
-type TickerResult struct {
-	Data   TickerResultData `json:"data"`
-	Stream string           `json:"stream"`
-}
-
 type TickerResultData struct {
 	BestAskQuantity             string  `json:"A"`
 	BestBidQuantity             string  `json:"B"`
