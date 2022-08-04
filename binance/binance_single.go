@@ -28,12 +28,14 @@ type BinanceSingle struct {
 	Tickers   []binance_models.TickerResultData
 	AggTrades []binance_models.AggTradeResultData
 
-	Request binance_models.WsRequest
-
 	Symbol         string
 	Limit          int
 	DepthMs        int
 	DepthCollected bool
+
+	Request binance_models.WsRequest
+
+	TimeoutMs int
 }
 
 func (bs *BinanceSingle) Init(symbol string, limit int, depthMs int, ticker, aggTrade bool) *BinanceSingle {
@@ -63,6 +65,8 @@ func (bs *BinanceSingle) Init(symbol string, limit int, depthMs int, ticker, agg
 		Params: params,
 		Id:     1,
 	}
+
+	bs.TimeoutMs = 0
 
 	return bs
 }
@@ -162,6 +166,12 @@ func (bs *BinanceSingle) CollectDepth(symbol string, limit int) error {
 	return nil
 }
 
+func (bs *BinanceSingle) SetTimeOut(timeoutMs int) *BinanceSingle {
+	bs.TimeoutMs = timeoutMs
+
+	return bs
+}
+
 func (bs *BinanceSingle) Open() error {
 	flag.Parse()
 	log.SetFlags(0)
@@ -197,6 +207,14 @@ func (bs *BinanceSingle) Any(durationSec int) error {
 		var mixinResult *binance_models.MixinResult
 
 		for {
+			if bs.TimeoutMs > 0 {
+				if setTimeoutErr := bs.Connection.SetReadDeadline(time.Now().Add(
+					time.Duration(bs.TimeoutMs) * time.Millisecond),
+				); setTimeoutErr != nil {
+					log.Print(setTimeoutErr)
+				}
+			}
+
 			if readErr := bs.Connection.ReadJSON(&mixinResult); readErr != nil {
 				log.Print(readErr)
 			} else {
