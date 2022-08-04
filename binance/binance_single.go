@@ -11,8 +11,11 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+var rwMutex sync.RWMutex
 
 type BinanceSingle struct {
 	Url        string
@@ -22,6 +25,9 @@ type BinanceSingle struct {
 	DepthAsks []binance_models.DepthValue
 	DepthBids []binance_models.DepthValue
 
+	Tickers   []binance_models.TickerResultData
+	AggTrades []binance_models.AggTradeResultData
+
 	Request binance_models.WsRequest
 
 	Symbol         string
@@ -30,7 +36,7 @@ type BinanceSingle struct {
 	DepthCollected bool
 }
 
-func (bs *BinanceSingle) Init(symbol string, limit int, depthMs int, aggTrade, ticker bool) *BinanceSingle {
+func (bs *BinanceSingle) Init(symbol string, limit int, depthMs int, ticker, aggTrade bool) *BinanceSingle {
 	bs.Url = "wss://stream.binance.com/stream"
 	bs.Header = nil
 	bs.DepthCollected = false
@@ -199,11 +205,13 @@ func (bs *BinanceSingle) Any(durationSec int) error {
 		}
 	}()
 
-	if collectErr := bs.CollectDepth(bs.Symbol, bs.Limit); collectErr != nil {
-		return collectErr
-	} else {
-		time.Sleep(time.Duration(durationSec) * time.Second)
+	if bs.DepthMs >= 100 {
+		if collectErr := bs.CollectDepth(bs.Symbol, bs.Limit); collectErr != nil {
+			return collectErr
+		}
 	}
+
+	time.Sleep(time.Duration(durationSec) * time.Second)
 
 	return nil
 }
@@ -224,48 +232,51 @@ func (bs *BinanceSingle) Switch(mixinResult *binance_models.MixinResult) *Binanc
 		//})
 
 	case strings.Contains(mixinResult.Stream, "ticker"):
-		bs.Ticker(*mixinResult.Data)
-		//bs.Ticker(binance_models.TickerResultData{
-		//	BestAskQuantity:             mixinResult.Data["A"].(string),
-		//	BestBidQuantity:             mixinResult.Data["B"].(string),
-		//	StatisticsCloseTime:         mixinResult.Data["C"].(float64),
-		//	EventTime:                   mixinResult.Data["E"].(float64),
-		//	FirstTradeID:                mixinResult.Data["F"].(float64),
-		//	LastTradeID:                 mixinResult.Data["L"].(float64),
-		//	StatisticsOpenTime:          mixinResult.Data["O"].(float64),
-		//	PriceChangePercent:          mixinResult.Data["P"].(string),
-		//	LastQuantity:                mixinResult.Data["Q"].(string),
-		//	BestAskPrice:                mixinResult.Data["a"].(string),
-		//	BestBidPrice:                mixinResult.Data["b"].(string),
-		//	LastPrice:                   mixinResult.Data["c"].(string),
-		//	EventType:                   mixinResult.Data["e"].(string),
-		//	HighPrice:                   mixinResult.Data["h"].(string),
-		//	LowPrice:                    mixinResult.Data["l"].(string),
-		//	TotalNumberOfTrades:         mixinResult.Data["n"].(float64),
-		//	OpenPrice:                   mixinResult.Data["o"].(string),
-		//	PriceChange:                 mixinResult.Data["p"].(string),
-		//	TotalTradedQuoteAssetVolume: mixinResult.Data["q"].(string),
-		//	Symbol:                      mixinResult.Data["s"].(string),
-		//	TotalTradedBaseAssetVolume:  mixinResult.Data["v"].(string),
-		//	WeightedAveragePrice:        mixinResult.Data["w"].(string),
-		//	FirstTradeBefore24Hr:        mixinResult.Data["x"].(string),
-		//})
+		bs.Ticker(binance_models.TickerResultData{
+			BestAskQuantity:             (*mixinResult.Data)["A"].(string),
+			BestBidQuantity:             (*mixinResult.Data)["B"].(string),
+			StatisticsCloseTime:         (*mixinResult.Data)["C"].(float64),
+			EventTime:                   (*mixinResult.Data)["E"].(float64),
+			FirstTradeID:                (*mixinResult.Data)["F"].(float64),
+			LastTradeID:                 (*mixinResult.Data)["L"].(float64),
+			StatisticsOpenTime:          (*mixinResult.Data)["O"].(float64),
+			PriceChangePercent:          (*mixinResult.Data)["P"].(string),
+			LastQuantity:                (*mixinResult.Data)["Q"].(string),
+			BestAskPrice:                (*mixinResult.Data)["a"].(string),
+			BestBidPrice:                (*mixinResult.Data)["b"].(string),
+			LastPrice:                   (*mixinResult.Data)["c"].(string),
+			EventType:                   (*mixinResult.Data)["e"].(string),
+			HighPrice:                   (*mixinResult.Data)["h"].(string),
+			LowPrice:                    (*mixinResult.Data)["l"].(string),
+			TotalNumberOfTrades:         (*mixinResult.Data)["n"].(float64),
+			OpenPrice:                   (*mixinResult.Data)["o"].(string),
+			PriceChange:                 (*mixinResult.Data)["p"].(string),
+			TotalTradedQuoteAssetVolume: (*mixinResult.Data)["q"].(string),
+			Symbol:                      (*mixinResult.Data)["s"].(string),
+			TotalTradedBaseAssetVolume:  (*mixinResult.Data)["v"].(string),
+			WeightedAveragePrice:        (*mixinResult.Data)["w"].(string),
+			FirstTradeBefore24Hr:        (*mixinResult.Data)["x"].(string),
+		})
 
 	case strings.Contains(mixinResult.Stream, "aggTrade"):
-		bs.AggTrade(*mixinResult.Data)
-		//bs.AggTrade(binance_models.AggTradeResultData{
-		//	EventTime:           mixinResult.Data["E"].(float64),
-		//	Ignore:              mixinResult.Data["M"].(bool),
-		//	TradeTime:           mixinResult.Data["T"].(float64),
-		//	AggregateTradeID:    mixinResult.Data["a"].(float64),
-		//	EventType:           mixinResult.Data["e"].(string),
-		//	FirstTradeID:        mixinResult.Data["f"].(float64),
-		//	LastTradeID:         mixinResult.Data["l"].(float64),
-		//	IsBuyerMarketMarker: mixinResult.Data["m"].(bool),
-		//	Price:               mixinResult.Data["p"].(string),
-		//	Quantity:            mixinResult.Data["q"].(string),
-		//	Symbol:              mixinResult.Data["s"].(string),
-		//})
+		// TODO: Will solved this problem -> fatal error: concurrent map read and map write
+		rwMutex.Lock()
+
+		bs.AggTrade(binance_models.AggTradeResultData{
+			EventTime:           (*mixinResult.Data)["E"].(float64),
+			Ignore:              (*mixinResult.Data)["M"].(bool),
+			TradeTime:           (*mixinResult.Data)["T"].(float64),
+			AggregateTradeID:    (*mixinResult.Data)["a"].(float64),
+			EventType:           (*mixinResult.Data)["e"].(string),
+			FirstTradeID:        (*mixinResult.Data)["f"].(float64),
+			LastTradeID:         (*mixinResult.Data)["l"].(float64),
+			IsBuyerMarketMarker: (*mixinResult.Data)["m"].(bool),
+			Price:               (*mixinResult.Data)["p"].(string),
+			Quantity:            (*mixinResult.Data)["q"].(string),
+			Symbol:              (*mixinResult.Data)["s"].(string),
+		})
+
+		rwMutex.Unlock()
 
 	}
 
@@ -273,7 +284,7 @@ func (bs *BinanceSingle) Switch(mixinResult *binance_models.MixinResult) *Binanc
 }
 
 func (bs *BinanceSingle) Depth(message map[string]interface{}) *BinanceSingle {
-	log.Printf("Fetched: %s", time.Now().UTC())
+	log.Printf("Depth Fetched: %s", time.Now().UTC())
 
 	for _, ask := range message["a"].([]interface{}) {
 		priceLevel, _ := strconv.ParseFloat(ask.([]interface{})[0].(string), 64)
@@ -309,18 +320,28 @@ func (bs *BinanceSingle) Depth(message map[string]interface{}) *BinanceSingle {
 		}
 	}
 
-	log.Printf("Appended: %s", time.Now().UTC())
+	log.Printf("Depth Appended: %s", time.Now().UTC())
 
 	return bs
 }
 
-func (bs *BinanceSingle) Ticker(message map[string]interface{}) *BinanceSingle {
-	log.Printf("Ticker: %s", time.Now().UTC())
+func (bs *BinanceSingle) Ticker(message binance_models.TickerResultData) *BinanceSingle {
+	log.Printf("Ticker Fetched: %s", time.Now().UTC())
+
+	bs.Tickers = append(bs.Tickers, message)
+
+	log.Printf("Ticker Appended: %s", time.Now().UTC())
+
 	return bs
 }
 
-func (bs *BinanceSingle) AggTrade(message map[string]interface{}) *BinanceSingle {
-	log.Printf("AggTrade: %s", time.Now().UTC())
+func (bs *BinanceSingle) AggTrade(message binance_models.AggTradeResultData) *BinanceSingle {
+	log.Printf("AggTrade Fetched: %s", time.Now().UTC())
+
+	bs.AggTrades = append(bs.AggTrades, message)
+
+	log.Printf("AggTrade Appended: %s", time.Now().UTC())
+
 	return bs
 }
 

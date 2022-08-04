@@ -9,9 +9,9 @@ func main() {
 
 	// I hope it more fast ....
 
-	bin := new(binance.BinanceSingle).Init("BtcUsdT", 1000, 100, false, false)
+	bin := new(binance.BinanceSingle).Init("BtcUsdT", 1000, 1000, true, false)
 
-	if anyErr := bin.Any(2); anyErr != nil {
+	if anyErr := bin.Any(20); anyErr != nil {
 		log.Print(anyErr)
 	}
 
