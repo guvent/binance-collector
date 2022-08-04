@@ -11,11 +11,8 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
-
-var rwMutex sync.RWMutex
 
 type BinanceSingle struct {
 	Url        string
@@ -194,7 +191,7 @@ func (bs *BinanceSingle) Open() error {
 	return nil
 }
 
-func (bs *BinanceSingle) Any(durationSec int) error {
+func (bs *BinanceSingle) Start(durationSec int) error {
 	if err := bs.Open(); err != nil {
 		log.Print(err)
 	}
@@ -204,9 +201,9 @@ func (bs *BinanceSingle) Any(durationSec int) error {
 	}
 
 	go func() {
-		var mixinResult *binance_models.MixinResult
-
 		for {
+			var mixinResult *binance_models.MixinResult
+
 			if bs.TimeoutMs > 0 {
 				if setTimeoutErr := bs.Connection.SetReadDeadline(time.Now().Add(
 					time.Duration(bs.TimeoutMs) * time.Millisecond),
@@ -220,6 +217,8 @@ func (bs *BinanceSingle) Any(durationSec int) error {
 			} else {
 				go bs.Switch(mixinResult)
 			}
+
+			mixinResult = nil
 		}
 	}()
 
@@ -277,9 +276,6 @@ func (bs *BinanceSingle) Switch(mixinResult *binance_models.MixinResult) *Binanc
 		})
 
 	case strings.Contains(mixinResult.Stream, "aggTrade"):
-		// TODO: Will solved this problem -> fatal error: concurrent map read and map write
-		rwMutex.Lock()
-
 		bs.AggTrade(binance_models.AggTradeResultData{
 			EventTime:           (*mixinResult.Data)["E"].(float64),
 			Ignore:              (*mixinResult.Data)["M"].(bool),
@@ -293,8 +289,6 @@ func (bs *BinanceSingle) Switch(mixinResult *binance_models.MixinResult) *Binanc
 			Quantity:            (*mixinResult.Data)["q"].(string),
 			Symbol:              (*mixinResult.Data)["s"].(string),
 		})
-
-		rwMutex.Unlock()
 
 	}
 
@@ -363,7 +357,7 @@ func (bs *BinanceSingle) AggTrade(message binance_models.AggTradeResultData) *Bi
 	return bs
 }
 
-func (bs *BinanceSingle) CloseWS() *BinanceSingle {
+func (bs *BinanceSingle) CloseWs() *BinanceSingle {
 	if bs.Connection != nil {
 		if err := bs.Connection.Close(); err != nil {
 			log.Print(err)
