@@ -1,10 +1,12 @@
 package database
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api"
+	"log"
 	"math/rand"
 	"time"
 )
@@ -21,6 +23,12 @@ func (influx *Influx) Init(serverURL, authToken string) *Influx {
 			SetUseGZip(true).
 			SetTLSConfig(&tls.Config{InsecureSkipVerify: true}),
 	)
+
+	if ping, err := influx.Client.Ping(context.Background()); err != nil {
+		log.Print(err)
+	} else {
+		log.Printf("Influx Connected : %v", ping)
+	}
 
 	return influx
 }
