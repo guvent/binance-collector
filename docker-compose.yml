@@ -26,15 +26,16 @@ services:
   binance_collector:
     image: binance_collector
     command: >
-      sh -c "
-        git init &&
-        git remote add origin ${GIT_URL} &&
+      sh -c "if ! [ -d .git ]; then git init && git remote add origin ${GIT_URL}; fi &&
         git fetch &&
         git pull origin master &&
         go mod download &&
         go build -o main -tags musl &&
         chmod 755 main
-        ./main"
+        while ! [ -e .crashed ]; do ./main; done && echo 'terminated...'"
     environment:
       GIT_URL: ${GIT_URL}
+      INFLUX_URL: ${INFLUX_URL}
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_BUCKET: ${INFLUX_BUCKET}
 

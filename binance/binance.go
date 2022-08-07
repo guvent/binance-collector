@@ -2,13 +2,10 @@ package binance
 
 import (
 	"binance_collector/binance/binance_models"
-	"flag"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -117,12 +114,6 @@ func (bin *Binance) Start(durationSec int) error {
 }
 
 func (bin *Binance) OpenWs() error {
-	flag.Parse()
-	log.SetFlags(0)
-
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
 	if conn, _, err := websocket.DefaultDialer.Dial(bin.url, bin.header); err != nil {
 		log.Print("dial:", err)
 	} else {
