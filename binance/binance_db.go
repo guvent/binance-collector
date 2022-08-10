@@ -28,7 +28,7 @@ type BinanceDatabase struct {
 }
 
 func (bin *BinanceDatabase) Init(
-	symbols []string, depthMs int,
+	symbols string, depthMs int,
 	serverURL, authToken, bucket string,
 ) *BinanceDatabase {
 	bin.url = "wss://stream.binance.com/stream"
@@ -36,7 +36,7 @@ func (bin *BinanceDatabase) Init(
 
 	var params []string
 
-	for _, symbol := range symbols {
+	for _, symbol := range strings.Split(symbols, ",") {
 		params = append(params, fmt.Sprintf("%s@depth@%dms", strings.ToLower(symbol), depthMs))
 		params = append(params, fmt.Sprintf("%s@aggTrade", strings.ToLower(symbol)))
 		params = append(params, fmt.Sprintf("%s@ticker", strings.ToLower(symbol)))
@@ -126,8 +126,6 @@ func (bin *BinanceDatabase) commit() *BinanceDatabase {
 	time.AfterFunc(time.Millisecond*600, func() {
 		bin.commit()
 	})
-
-	log.Print("committed....")
 
 	return bin
 }

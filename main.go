@@ -11,30 +11,17 @@ func main() {
 	serverURL := os.Getenv("INFLUX_URL")
 	authToken := os.Getenv("INFLUX_TOKEN")
 	bucket := os.Getenv("INFLUX_BUCKET")
+	symbols := os.Getenv("SYMBOLS")
 
 	serverURL = strings.ReplaceAll(serverURL, "'", "")
 	authToken = strings.ReplaceAll(authToken, "'", "")
 	bucket = strings.ReplaceAll(bucket, "'", "")
-
-	symbols := []string{
-		"BTCUSDT",
-		"ETHUSDT",
-		"ETCUSDT",
-		"XRPUSDT",
-		"LTCUSDT",
-		"SOLUSDT",
-		"XMRUSDT",
-		"BCHUSDT",
-		"ATOMUSDT",
-		"LINKUSDT",
-		"DOGEUSDT",
-		"AVAXUSDT",
-	}
+	symbols = strings.ReplaceAll(symbols, "'", "")
 
 	log.Printf("INFLUX_URL : %s", serverURL)
 	log.Printf("INFLUX_TOKEN : %s", authToken)
 	log.Printf("INFLUX_BUCKET : %s", bucket)
-	log.Printf(" Symbols: %v", symbols)
+	log.Printf("SYMBOLS: %v", symbols)
 
 	bin := new(binance.BinanceDatabase)
 	bin.Init(symbols, 100, serverURL, authToken, bucket)
