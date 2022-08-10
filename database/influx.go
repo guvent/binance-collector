@@ -63,8 +63,6 @@ func (influx *Influx) WriteData(measurement string) *Influx {
 		influx.WriteApi.WritePoint(p)
 	}
 
-	influx.WriteApi.Flush()
-
 	return influx
 }
 
@@ -74,21 +72,21 @@ func (influx *Influx) WriteDepth(message map[string]interface{}) *Influx {
 		influxdb2.NewPoint(
 			fmt.Sprintf("%s@depth", message["s"].(string)),
 			map[string]string{
-				"event_type":            message["e"].(string),
-				"symbol":                message["s"].(string),
-				"event_time":            fmt.Sprintf("%f", message["E"].(float64)),
+				"event_type": message["e"].(string),
+				"symbol":     message["s"].(string),
+				"event_time": time.UnixMilli(
+					int64(message["E"].(float64)),
+				).Format(time.RFC3339Nano),
 				"final_update_id_event": fmt.Sprintf("%f", message["u"].(float64)),
 				"first_update_id_event": fmt.Sprintf("%f", message["u"].(float64)),
-				"now":                   time.Now().UTC().Format(time.RFC3339Nano),
 			},
 			map[string]interface{}{
 				"asks": message["a"].([]interface{}),
 				"bids": message["b"].([]interface{}),
 			},
-			time.UnixMilli(int64(message["E"].(float64)))),
+			time.Now(),
+		),
 	)
-
-	influx.WriteApi.Flush()
 
 	return influx
 }
@@ -101,8 +99,10 @@ func (influx *Influx) WriteTicker(message map[string]interface{}) *Influx {
 			map[string]string{
 				"event_type": message["e"].(string),
 				"symbol":     message["s"].(string),
-				"event_time": fmt.Sprintf("%f", message["E"].(float64)),
-				"now":        time.Now().UTC().Format(time.RFC3339Nano),
+				"event_time": time.UnixMilli(
+					int64(message["E"].(float64)),
+				).Format(time.RFC3339Nano),
+				"now": time.Now().UTC().Format(time.RFC3339Nano),
 			},
 			map[string]interface{}{
 				"event_time":                      time.UnixMilli(int64(message["E"].(float64))).UTC(),
@@ -127,25 +127,23 @@ func (influx *Influx) WriteTicker(message map[string]interface{}) *Influx {
 				"weighted_average_price":          message["w"].(string),
 				"first_trade_before_24hr":         message["x"].(string),
 			},
-			time.UnixMilli(int64(message["E"].(float64))),
+			time.Now(),
 		),
 	)
-
-	influx.WriteApi.Flush()
 
 	return influx
 }
 
 func (influx *Influx) WriteAggTrade(message map[string]interface{}) *Influx {
-
 	influx.WriteApi.WritePoint(
 		influxdb2.NewPoint(
 			fmt.Sprintf("%s@aggTrade", message["s"].(string)),
 			map[string]string{
 				"event_type": message["e"].(string),
 				"symbol":     message["s"].(string),
-				"event_time": fmt.Sprintf("%f", message["E"].(float64)),
-				"now":        time.Now().UTC().Format(time.RFC3339Nano),
+				"event_time": time.UnixMilli(
+					int64(message["E"].(float64)),
+				).Format(time.RFC3339Nano),
 			},
 			map[string]interface{}{
 				"event_time":             time.UnixMilli(int64(message["E"].(float64))).UTC(),
@@ -158,9 +156,14 @@ func (influx *Influx) WriteAggTrade(message map[string]interface{}) *Influx {
 				"trade_time":             message["T"].(float64),
 				"aggregate_trade_time":   message["a"].(float64),
 			},
-			time.UnixMilli(int64(message["E"].(float64)))),
+			time.Now(),
+		),
 	)
 
+	return influx
+}
+
+func (influx *Influx) Commit() *Influx {
 	influx.WriteApi.Flush()
 
 	return influx

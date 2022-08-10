@@ -3,6 +3,7 @@ package main
 import (
 	"binance_collector/binance"
 	"binance_collector/binance/binance_models"
+	"binance_collector/database"
 	"binance_collector/queue"
 	"encoding/json"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -10,6 +11,15 @@ import (
 )
 
 var collect []interface{}
+
+func cassandra() {
+	c := new(database.Cassandra).Init()
+	for i := 0; i < 1000; i++ {
+		c.WriteData()
+	}
+
+	log.Print(c)
+}
 
 func test5() {
 	kf := new(queue.KafkaConnection).Init("binance-2")

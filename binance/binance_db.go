@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type BinanceDatabase struct {
@@ -61,6 +62,8 @@ func (bin *BinanceDatabase) Start() error {
 		return writeErr
 	}
 
+	bin.commit()
+
 	for {
 		var mixinResult *binance_models.MixinResult
 
@@ -113,6 +116,18 @@ func (bin *BinanceDatabase) choose(mixinResult *binance_models.MixinResult) *Bin
 		bin.Influx.WriteAggTrade(*mixinResult.Data)
 
 	}
+
+	return bin
+}
+
+func (bin *BinanceDatabase) commit() *BinanceDatabase {
+	bin.Influx.Commit()
+
+	time.AfterFunc(time.Millisecond*600, func() {
+		bin.commit()
+	})
+
+	log.Print("committed....")
 
 	return bin
 }
