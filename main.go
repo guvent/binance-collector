@@ -2,50 +2,21 @@ package main
 
 import (
 	"binance_collector/binance"
+	"binance_collector/utils"
 	"log"
-	"os"
-	"strings"
 )
 
 func main() {
-	serverURL := os.Getenv("INFLUX_URL")
-	authToken := os.Getenv("INFLUX_TOKEN")
-	bucket := os.Getenv("INFLUX_BUCKET")
-	symbols := os.Getenv("SYMBOLS")
-
-	serverURL = strings.ReplaceAll(serverURL, "'", "")
-	authToken = strings.ReplaceAll(authToken, "'", "")
-	bucket = strings.ReplaceAll(bucket, "'", "")
-	symbols = strings.ReplaceAll(symbols, "'", "")
-
-	log.Printf("INFLUX_URL : %s", serverURL)
-	log.Printf("INFLUX_TOKEN : %s", authToken)
-	log.Printf("INFLUX_BUCKET : %s", bucket)
-	log.Printf("SYMBOLS: %v", symbols)
-
-	bin := new(binance.BinanceDatabase)
-	bin.Init(symbols, 100, serverURL, authToken, bucket)
-
-	if anyErr := bin.Start(); anyErr != nil {
-		log.Print(anyErr)
-	}
-
-	bin.CloseWs()
-
-	log.Println("Complete....")
-}
-
-func main2() {
-
-	// I hope it more fast ....
+	env := new(utils.GetEnvironment).Init()
 
 	bin := new(binance.Binance)
-	bin.Init("BtcUsdT", 1000, 100, true, true)
+	bin.Init(env)
 
-	if anyErr := bin.Start(20); anyErr != nil {
+	if anyErr := bin.Start(env.CommitMS); anyErr != nil {
 		log.Print(anyErr)
 	}
 
 	bin.CloseWs()
 
+	log.Println("terminated.")
 }
