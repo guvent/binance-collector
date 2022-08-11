@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 )
 
 type GetEnvironment struct {
@@ -41,7 +42,7 @@ func (env *GetEnvironment) load() *GetEnvironment {
 	log.Printf("* INFLUX_TOKEN : %s", env.AuthToken)
 	log.Printf("* INFLUX_BUCKET : %s", env.Bucket)
 	log.Printf("* INFLUX_COMMIT_MS : %s", env.CommitMS)
-	log.Printf("* SYMBOLS: %v", env.Bucket)
+	log.Printf("* SYMBOLS: %v", env.Symbols)
 
 	return env.check()
 }
@@ -64,6 +65,15 @@ func (env *GetEnvironment) check() *GetEnvironment {
 	}
 	if strings.Trim(env.DepthMS, " ") == "" {
 		log.Fatal("Require Depth Value (ms)!")
+	}
+	if strings.Trim(env.Symbols, " ") == "" {
+		log.Fatal("Require Symbols (with comma)!")
+	}
+
+	if ms, err := time.ParseDuration(env.CommitMS); err == nil {
+		log.Printf("Commit MS : %s", ms)
+	} else {
+		log.Fatalf("Commit MS Error: %v", err)
 	}
 
 	return env
