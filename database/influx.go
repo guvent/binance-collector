@@ -8,6 +8,7 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"log"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -68,25 +69,71 @@ func (influx *Influx) WriteData(measurement string) *Influx {
 
 func (influx *Influx) WriteDepth(message map[string]interface{}) *Influx {
 
-	influx.WriteApi.WritePoint(
-		influxdb2.NewPoint(
-			fmt.Sprintf("%s@depth", message["s"].(string)),
-			map[string]string{
-				"event_type": message["e"].(string),
-				"symbol":     message["s"].(string),
-				"event_time": time.UnixMilli(
-					int64(message["E"].(float64)),
-				).Format(time.RFC3339Nano),
-				"final_update_id_event": fmt.Sprintf("%f", message["u"].(float64)),
-				"first_update_id_event": fmt.Sprintf("%f", message["u"].(float64)),
-			},
-			map[string]interface{}{
-				"asks": message["a"].([]interface{}),
-				"bids": message["b"].([]interface{}),
-			},
-			time.Now(),
-		),
-	)
+	for _, ask := range message["a"].([]interface{}) {
+		influx.WriteApi.WritePoint(
+			influxdb2.NewPoint(
+				fmt.Sprintf("%s@depth", message["s"].(string)),
+				map[string]string{
+					"rotation":              "ask",
+					"event_type":            message["e"].(string),
+					"symbol":                message["s"].(string),
+					"event_time":            time.UnixMilli(int64(message["E"].(float64))).Format(time.RFC3339Nano),
+					"final_update_id_event": fmt.Sprintf("%f", message["u"].(float64)),
+					"first_update_id_event": fmt.Sprintf("%f", message["u"].(float64)),
+				},
+				map[string]interface{}{
+					"price": (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(ask.([]interface{})[0].(string)),
+					"quantity": (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(ask.([]interface{})[1].(string)),
+				},
+				time.Now(),
+			),
+		)
+	}
+
+	for _, bid := range message["b"].([]interface{}) {
+		influx.WriteApi.WritePoint(
+			influxdb2.NewPoint(
+				fmt.Sprintf("%s@depth", message["s"].(string)),
+				map[string]string{
+					"rotation":              "bid",
+					"event_type":            message["e"].(string),
+					"symbol":                message["s"].(string),
+					"event_time":            time.UnixMilli(int64(message["E"].(float64))).Format(time.RFC3339Nano),
+					"final_update_id_event": fmt.Sprintf("%f", message["u"].(float64)),
+					"first_update_id_event": fmt.Sprintf("%f", message["u"].(float64)),
+				},
+				map[string]interface{}{
+					"price": (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(bid.([]interface{})[0].(string)),
+					"quantity": (func(vl string) float64 {
+						if v, e := strconv.ParseFloat(vl, 64); e != nil {
+							return 0.0
+						} else {
+							return v
+						}
+					})(bid.([]interface{})[1].(string)),
+				},
+				time.Now(),
+			),
+		)
+	}
 
 	return influx
 }
