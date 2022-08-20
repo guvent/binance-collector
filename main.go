@@ -6,15 +6,44 @@ import (
 	"log"
 )
 
+var env = new(utils.GetEnvironment).Init()
+
 func main() {
-	env := new(utils.GetEnvironment).Init()
+	runInflux()
+}
 
-	bin := new(binance.Binance)
-
-	//bin.Init(env).QueryTest()
+func runBoth() {
+	bin := new(binance.BinanceBoth).Init(env)
 
 	if anyErr := bin.Start(env.CommitMS); anyErr != nil {
 		log.Print(anyErr)
+	}
+
+	bin.CloseWs()
+
+	log.Println("terminated.")
+}
+
+func runInflux() {
+
+	bin := new(binance.Binance).Init(env)
+
+	//bin.QueryTest()
+
+	if anyErr := bin.Start(env.CommitMS); anyErr != nil {
+		log.Print(anyErr)
+	}
+
+	bin.CloseWs()
+
+	log.Println("terminated.")
+}
+
+func runMemory() {
+	bin := new(binance.BinanceMemory).Init(env)
+
+	if err := bin.Start(); err != nil {
+		log.Fatal(err)
 	}
 
 	bin.CloseWs()

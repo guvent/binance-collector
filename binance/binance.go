@@ -19,12 +19,6 @@ type Binance struct {
 
 	wsRequest binance_models.WsRequest
 
-	DepthAsks []binance_models.DepthValue
-	DepthBids []binance_models.DepthValue
-
-	Tickers   []binance_models.TickerResultData
-	AggTrades []binance_models.AggTradeResultData
-
 	Influx *database.Influx
 }
 
