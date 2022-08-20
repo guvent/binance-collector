@@ -1,6 +1,7 @@
 package database
 
 import (
+	"binance_collector/utils"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 type Influx struct {
 	Client   influxdb2.Client
 	WriteApi api.WriteAPI
+	QueryApi api.QueryAPI
 }
 
 func (influx *Influx) Init(serverURL, authToken string) *Influx {
@@ -34,7 +36,59 @@ func (influx *Influx) Init(serverURL, authToken string) *Influx {
 	return influx
 }
 
-func (influx *Influx) Select(org, bucket string) *Influx {
+func (influx *Influx) QueryInit(org string) *Influx {
+
+	influx.QueryApi = influx.Client.QueryAPI(org)
+
+	return influx
+}
+
+func (influx *Influx) ReadData() *Influx {
+	/*
+		from(bucket: "buysell")
+		  |> range(start: -1m)
+		  |> filter(fn: (r) => r["_measurement"] == "ATOMUSDT@depth")
+		  |> filter(fn: (r) => r["rotation"] == "bid")
+
+		  |> filter( fn: (r) => r["_field"] == "price" or r["_field"] == "quantity" )
+
+		  |> group(columns: ["_value", "_start", "_stop", "_field", "rotation", "symbol"])
+		  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+		  |> map(fn: (r) => ({ r with _value: r.price * r.quantity }))
+		  |> sort(columns: ["_value"], desc: true)
+		  |> limit(n:10)
+	*/
+
+	queryBuild := new(utils.InfluxQueryBuilder)
+	queryBuild = queryBuild.From("buysell")
+	queryBuild = queryBuild.Range("-1m", "")
+	queryBuild = queryBuild.Filter(utils.KeyValueItem{Key: "_measurement", Value: "ATOMUSDT@depth"})
+	queryBuild = queryBuild.Filter(utils.KeyValueItem{Key: "rotation", Value: "bid"})
+
+	queryBuild = queryBuild.Filters([]utils.KeyValueItem{
+		{Key: "_field", Value: "price"},
+		{Key: "_field", Value: "quantity"},
+	}, "or")
+
+	queryBuild = queryBuild.Group([]string{"_value", "_start", "_stop", "_field", "rotation", "symbol"})
+	queryBuild = queryBuild.Pivot("_time", "_field", "_value")
+	queryBuild = queryBuild.Map("{ r with _value: r.price * r.quantity }")
+	queryBuild = queryBuild.Sort([]string{"_value"}, true)
+	queryBuild = queryBuild.Limit(10)
+
+	if err := queryBuild.Execute(influx.QueryApi, func(result *api.QueryTableResult) {
+		if result.TableChanged() {
+			fmt.Printf("table: %s\n", result.TableMetadata().String())
+		}
+		fmt.Printf("value: %v\n", result.Record().Values())
+	}); err != nil {
+		log.Fatal(err)
+	}
+
+	return influx
+}
+
+func (influx *Influx) WriteInit(org, bucket string) *Influx {
 
 	influx.WriteApi = influx.Client.WriteAPI(org, bucket)
 

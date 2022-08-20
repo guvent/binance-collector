@@ -46,9 +46,15 @@ func (bin *Binance) Init(env *utils.GetEnvironment) *Binance {
 		Id:     1,
 	}
 
-	bin.Influx = new(database.Influx).Init(env.ServerURL, env.AuthToken).Select("buysell", env.Bucket)
+	bin.Influx = new(database.Influx).Init(env.ServerURL, env.AuthToken)
+	bin.Influx = bin.Influx.WriteInit(env.Org, env.Bucket)
+	bin.Influx = bin.Influx.QueryInit(env.Org)
 
 	return bin
+}
+
+func (bin *Binance) QueryTest() {
+	bin.Influx.ReadData()
 }
 
 func (bin *Binance) Start(commitMs string) error {
