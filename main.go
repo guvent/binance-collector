@@ -9,6 +9,7 @@ import (
 var env = new(utils.GetEnvironment).Init()
 
 func main() {
+	//runCalc()
 	runInflux()
 }
 
@@ -41,6 +42,18 @@ func runInflux() {
 
 func runMemory() {
 	bin := new(binance.BinanceMemory).Init(env)
+
+	if err := bin.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	bin.CloseWs()
+
+	log.Println("terminated.")
+}
+
+func runCalc() {
+	bin := new(binance.BinanceCalc).Init(env)
 
 	if err := bin.Start(); err != nil {
 		log.Fatal(err)
